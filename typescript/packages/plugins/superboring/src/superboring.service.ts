@@ -1,20 +1,13 @@
 import { Tool } from "@goat-sdk/core";
 import { EVMWalletClient } from "@goat-sdk/wallet-evm";
-import { 
-  SUPERBORING_ABI, 
-  MACRO_FORWARDER_ABI, 
-  SB_MACRO_ABI, 
-  TOREX_ABI, 
-  SUPER_TOKEN_ABI, 
-  ERC20_ABI 
-} from "./abi";
+import { ERC20_ABI, MACRO_FORWARDER_ABI, SB_MACRO_ABI, SUPERBORING_ABI, SUPER_TOKEN_ABI, TOREX_ABI } from "./abi";
 import {
     ApproveTokenParameters,
     BuildBatchOperationsParameters,
     GetAllowanceParameters,
     GetBalanceParameters,
-    GetParamsParameters,
     GetPairedTokensParameters,
+    GetParamsParameters,
     GetUnderlyingTokenParameters,
     PostCheckParameters,
     RunMacroParameters,
