@@ -15,7 +15,9 @@ export class GetParamsParameters extends createToolParameters(
         flowRate: z.string().describe("The flow rate in tokens per second"),
         distributor: z.string().describe("The distributor address (use ZeroAddress if not needed)"),
         referrer: z.string().describe("The referrer address (use ZeroAddress if not needed)"),
-        upgradeAmount: z.string().describe("The amount of tokens to upgrade (use MaxUint256 for maximum possible amount)"),
+        upgradeAmount: z
+            .string()
+            .describe("The amount of tokens to upgrade (use MaxUint256 for maximum possible amount)"),
     }),
 ) {}
 
