@@ -1,8 +1,17 @@
 import { Tool } from "@goat-sdk/core";
 import { EVMWalletClient } from "@goat-sdk/wallet-evm";
 import { ethers } from "ethers";
-import {ERC20_ABI, MACRO_FORWARDER_ABI, SB_MACRO_ABI, SUPER_TOKEN_ABI, TOREX_ABI} from "./abi";
-import { GetParamsParameters } from "./parameters";
+import { ERC20_ABI, MACRO_FORWARDER_ABI, SB_MACRO_ABI, SUPER_TOKEN_ABI, TOREX_ABI } from "./abi";
+import {
+    ApproveTokenParameters,
+    GetAllowanceParameters,
+    GetBalanceParameters,
+    GetPairedTokensParameters,
+    GetParamsParameters,
+    GetUnderlyingTokenParameters,
+    PostCheckParameters,
+    RunMacroParameters,
+} from "./parameters";
 
 export class SuperboringService {
     private readonly SB_MACRO_ADDRESS = "0x34Db26737185671215fB90E2F8C6fd8C4F8eB944"; // Optimism Sepolia
@@ -13,7 +22,8 @@ export class SuperboringService {
      * Start a SuperBoring DCA (Dollar-Cost Averaging) position
      * @param walletClient An EVMWalletClient instance
      * @param parameters Configuration parameters for the DCA position
-     * @returns Transaction hash of the DCA position creation
+     * @returns Transaction hash of the DCA position creationi
+     * reference to: https://docs.superboring.xyz/docs/integrate/integration-guide
      */
     @Tool({
         name: "startSuperBoringDCAPosition",
@@ -59,16 +69,135 @@ export class SuperboringService {
 
             const tx = await macroForwarder.runMacro(this.SB_MACRO_ADDRESS, params);
             await tx.wait();
-
         } catch (err) {
             console.error(err);
         }
     }
+    @Tool({
+        name: "get_params",
+        description: "Get encoded parameters for SuperBoring DCA flow",
+    })
+    async getParams(walletClient: EVMWalletClient, parameters: GetParamsParameters) {
+        try {
+            const result = await walletClient.read({
+                address: this.SB_MACRO_ADDRESS,
+                abi: SB_MACRO_ABI,
+                functionName: "getParams",
+                args: [
+                    parameters.torexAddr,
+                    parameters.flowRate,
+                    parameters.distributor,
+                    parameters.referrer,
+                    parameters.upgradeAmount,
+                ],
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get params: ${error}`);
+        }
+    }
+
+    async postCheck(walletClient: EVMWalletClient, parameters: PostCheckParameters) {
+        try {
+            const result = await walletClient.read({
+                address: this.SB_MACRO_ADDRESS,
+                abi: SB_MACRO_ABI,
+                functionName: "postCheck",
+                args: [parameters.host, parameters.params, parameters.msgSender],
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to perform post check: ${error}`);
+        }
+    }
+
+    // @Tool({
+    //     name: "run_macro",
+    //     description: "Run a SuperBoring macro to start a DCA position",
+    // })
+    async runMacro(walletClient: EVMWalletClient, parameters: RunMacroParameters) {
+        try {
+            const hash = await walletClient.sendTransaction({
+                to: this.MACRO_FORWARDER_ADDRESS,
+                abi: MACRO_FORWARDER_ABI,
+                functionName: "runMacro",
+                args: [parameters.macroAddress, parameters.params],
+            });
+            return hash.hash;
+        } catch (error) {
+            throw Error(`Failed to run macro: ${error}`);
+        }
+    }
+
+    async getPairedTokens(walletClient: EVMWalletClient, parameters: GetPairedTokensParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.torexAddr,
+                abi: TOREX_ABI,
+                functionName: "getPairedTokens",
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get paired tokens: ${error}`);
+        }
+    }
+
+    async getUnderlyingToken(walletClient: EVMWalletClient, parameters: GetUnderlyingTokenParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.superTokenAddr,
+                abi: SUPER_TOKEN_ABI,
+                functionName: "getUnderlyingToken",
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get underlying token: ${error}`);
+        }
+    }
+
+    async getBalance(walletClient: EVMWalletClient, parameters: GetBalanceParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.tokenAddr,
+                abi: ERC20_ABI,
+                functionName: "balanceOf",
+                args: [parameters.account],
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get balance: ${error}`);
+        }
+    }
+
+    async getAllowance(walletClient: EVMWalletClient, parameters: GetAllowanceParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.tokenAddr,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [parameters.owner, parameters.spender],
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get allowance: ${error}`);
+        }
+    }
+
+    async approveToken(walletClient: EVMWalletClient, parameters: ApproveTokenParameters) {
+        try {
+            const hash = await walletClient.sendTransaction({
+                to: parameters.tokenAddr,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [parameters.spender, parameters.amount],
+            });
+            return hash.hash;
+        } catch (error) {
+            throw Error(`Failed to approve token: ${error}`);
+        }
+    }
 }
-async function getUnderlyingAddr(
-    inTokenAddr: string,
-    provider: ethers.Provider,
-): Promise<string> {
+async function getUnderlyingAddr(inTokenAddr: string, provider: ethers.Provider): Promise<string> {
     const superToken = new ethers.Contract(inTokenAddr, SUPER_TOKEN_ABI, provider);
     const underlyingAddr = await superToken.getUnderlyingToken();
     return underlyingAddr;
@@ -100,9 +229,9 @@ const fetchAllowance = async (
         return null; // Return null in case of error
     }
 };
-async function getInTokenAddr(torexAddr: string,provider: ethers.Provider) {
-  const torex = new ethers.Contract(torexAddr, TOREX_ABI, provider);
+async function getInTokenAddr(torexAddr: string, provider: ethers.Provider) {
+    const torex = new ethers.Contract(torexAddr, TOREX_ABI, provider);
 
-  const [inTokenAddr] = await torex.getPairedTokens();
-  return inTokenAddr;
+    const [inTokenAddr] = await torex.getPairedTokens();
+    return inTokenAddr;
 }
