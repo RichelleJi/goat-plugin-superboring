@@ -14,8 +14,7 @@ import {
 } from "./parameters";
 
 export class SuperboringService {
-    // Constants for contract addresses based on SuperBoring.jsx
-    private readonly SB_MACRO_ADDRESS = "0x383329703f346d72F4b86111a502daaa8f2c69C7"; // Optimism Mainnet
+    private readonly SB_MACRO_ADDRESS = "0x34Db26737185671215fB90E2F8C6fd8C4F8eB944"; // Optimism Sepolia
     private readonly MACRO_FORWARDER_ADDRESS = "0xfD01285b9435bc45C243E5e7F978E288B2912de6";
 
     @Tool({
