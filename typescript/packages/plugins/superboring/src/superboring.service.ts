@@ -1,7 +1,7 @@
 import { Tool } from "@goat-sdk/core";
 import { EVMWalletClient } from "@goat-sdk/wallet-evm";
 import { ethers } from "ethers";
-import { ERC20_ABI, MACRO_FORWARDER_ABI, SB_MACRO_ABI, SUPER_TOKEN_ABI, TOREX_ABI } from "./abi";
+import {ERC20_ABI, MACRO_FORWARDER_ABI, SB_MACRO_ABI, SUPER_TOKEN_ABI, TOREX_ABI} from "./abi";
 import { GetParamsParameters } from "./parameters";
 
 export class SuperboringService {
@@ -17,49 +17,38 @@ export class SuperboringService {
      */
     @Tool({
         name: "startSuperBoringDCAPosition",
-        description: "Get encoded parameters for SuperBoring DCA flow",
+        description: "Start a SuperBoring DCA (Dollar-Cost Averaging) position",
     })
     async startSuperBoringDCAPosition(walletClient: EVMWalletClient, parameters: GetParamsParameters) {
         try {
             // Get provider and wallet address
             const provider = new ethers.JsonRpcProvider(this.RPC_URL);
             const walletAddress = walletClient.getAddress();
+            const signer = await provider.getSigner();
 
             // Create contract instances
+            const macroForwarder = new ethers.Contract(this.MACRO_FORWARDER_ADDRESS, MACRO_FORWARDER_ABI, signer);
             const sbMacro = new ethers.Contract(this.SB_MACRO_ADDRESS, SB_MACRO_ABI, provider);
 
             // Parse values
             const flowRateBN = ethers.parseEther(parameters.flowRate);
             const upgradeAmountBN = ethers.parseEther(parameters.upgradeAmount);
-
-            // Get token information
-            const torex = new ethers.Contract(parameters.torexAddr, TOREX_ABI, provider);
-            const [inTokenAddr] = await torex.getPairedTokens();
+            const inTokenAddr = await getInTokenAddr(parameters.torexAddr, provider);
 
             // Get underlying token address
             const superToken = new ethers.Contract(inTokenAddr, SUPER_TOKEN_ABI, provider);
-            const underlyingTokenAddress = await superToken.getUnderlyingToken();
+            const allowance = await fetchAllowance(inTokenAddr, inTokenAddr, provider, walletAddress);
+            const underlyingTokenAddress = await getUnderlyingAddr(inTokenAddr, provider);
 
-            // Check allowance if needed
-            if (underlyingTokenAddress !== ethers.ZeroAddress) {
-                const erc20 = new ethers.Contract(underlyingTokenAddress, ERC20_ABI, provider);
-                const allowance = await erc20.allowance(walletAddress, inTokenAddr);
-
-                // If allowance is insufficient, approve the token
-                if (BigInt(upgradeAmountBN) > BigInt(allowance)) {
-                    // We'll use walletClient to send the approval transaction
-                    const approveTx = await walletClient.sendTransaction({
-                        to: underlyingTokenAddress,
-                        abi: ERC20_ABI,
-                        functionName: "approve",
-                        args: [inTokenAddr, upgradeAmountBN],
-                    });
-                    // No need to wait for confirmation in this implementation
-                    // The transaction will be processed by the blockchain
+            if (allowance !== null && BigInt(upgradeAmountBN) > BigInt(ethers.parseEther(allowance))) {
+                if (underlyingTokenAddress !== ethers.ZeroAddress) {
+                    const erc20 = new ethers.Contract(underlyingTokenAddress, ERC20_ABI, signer);
+                    const approveTx = await erc20.approve(inTokenAddr, upgradeAmountBN);
+                    await approveTx.wait();
+                    console.log("Approval successful. Starting DCA position.");
                 }
             }
 
-            // Get encoded parameters
             const params = await sbMacro.getParams(
                 parameters.torexAddr,
                 flowRateBN,
@@ -68,28 +57,19 @@ export class SuperboringService {
                 upgradeAmountBN,
             );
 
-            // Execute the transaction
-            const tx = await walletClient.sendTransaction({
-                to: this.MACRO_FORWARDER_ADDRESS,
-                abi: MACRO_FORWARDER_ABI,
-                functionName: "runMacro",
-                args: [this.SB_MACRO_ADDRESS, params],
-            });
+            const tx = await macroForwarder.runMacro(this.SB_MACRO_ADDRESS, params);
+            await tx.wait();
 
-            return tx.hash;
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            throw new Error(`Failed to start SuperBoring DCA position: ${errorMessage}`);
+        } catch (err) {
+            console.error(err);
         }
     }
 }
-
 async function getUnderlyingAddr(
     inTokenAddr: string,
-    superTokenABI: readonly (string | object)[],
-    provider: ethers.BrowserProvider,
+    provider: ethers.Provider,
 ): Promise<string> {
-    const superToken = new ethers.Contract(inTokenAddr, superTokenABI, provider);
+    const superToken = new ethers.Contract(inTokenAddr, SUPER_TOKEN_ABI, provider);
     const underlyingAddr = await superToken.getUnderlyingToken();
     return underlyingAddr;
 }
@@ -107,7 +87,6 @@ const fetchAllowance = async (
             const balance = await provider.getBalance(walletAddress);
             return null;
         }
-
         // ERC20 token
         const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
         console.log(tokenAddress);
@@ -121,3 +100,9 @@ const fetchAllowance = async (
         return null; // Return null in case of error
     }
 };
+async function getInTokenAddr(torexAddr: string,provider: ethers.Provider) {
+  const torex = new ethers.Contract(torexAddr, TOREX_ABI, provider);
+
+  const [inTokenAddr] = await torex.getPairedTokens();
+  return inTokenAddr;
+}
