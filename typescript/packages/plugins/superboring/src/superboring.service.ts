@@ -1,9 +1,21 @@
 import { Tool } from "@goat-sdk/core";
 import { EVMWalletClient } from "@goat-sdk/wallet-evm";
-import { MACRO_FORWARDER_ABI, SB_MACRO_CONTRACT_ABI } from "./abi";
+import { 
+  SUPERBORING_ABI, 
+  MACRO_FORWARDER_ABI, 
+  SB_MACRO_ABI, 
+  TOREX_ABI, 
+  SUPER_TOKEN_ABI, 
+  ERC20_ABI 
+} from "./abi";
 import {
+    ApproveTokenParameters,
     BuildBatchOperationsParameters,
+    GetAllowanceParameters,
+    GetBalanceParameters,
     GetParamsParameters,
+    GetPairedTokensParameters,
+    GetUnderlyingTokenParameters,
     PostCheckParameters,
     RunMacroParameters,
 } from "./parameters";
@@ -21,7 +33,7 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SB_MACRO_CONTRACT_ABI,
+                abi: SB_MACRO_ABI,
                 functionName: "getParams",
                 args: [
                     parameters.torexAddr,
@@ -45,7 +57,7 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SB_MACRO_CONTRACT_ABI,
+                abi: SUPERBORING_ABI,
                 functionName: "buildBatchOperations",
                 args: [parameters.host, parameters.params, parameters.msgSender],
             });
@@ -63,7 +75,7 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SB_MACRO_CONTRACT_ABI,
+                abi: SUPERBORING_ABI,
                 functionName: "postCheck",
                 args: [parameters.host, parameters.params, parameters.msgSender],
             });
@@ -88,6 +100,94 @@ export class SuperboringService {
             return hash.hash;
         } catch (error) {
             throw Error(`Failed to run macro: ${error}`);
+        }
+    }
+
+    @Tool({
+        name: "get_paired_tokens",
+        description: "Get the paired tokens (inToken and outToken) for a Torex contract",
+    })
+    async getPairedTokens(walletClient: EVMWalletClient, parameters: GetPairedTokensParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.torexAddr,
+                abi: TOREX_ABI,
+                functionName: "getPairedTokens",
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get paired tokens: ${error}`);
+        }
+    }
+
+    @Tool({
+        name: "get_underlying_token",
+        description: "Get the underlying token for a SuperToken",
+    })
+    async getUnderlyingToken(walletClient: EVMWalletClient, parameters: GetUnderlyingTokenParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.superTokenAddr,
+                abi: SUPER_TOKEN_ABI,
+                functionName: "getUnderlyingToken",
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get underlying token: ${error}`);
+        }
+    }
+
+    @Tool({
+        name: "get_balance",
+        description: "Get the balance of an ERC20 token for an account",
+    })
+    async getBalance(walletClient: EVMWalletClient, parameters: GetBalanceParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.tokenAddr,
+                abi: ERC20_ABI,
+                functionName: "balanceOf",
+                args: [parameters.account],
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get balance: ${error}`);
+        }
+    }
+
+    @Tool({
+        name: "get_allowance",
+        description: "Get the allowance of an ERC20 token for a spender",
+    })
+    async getAllowance(walletClient: EVMWalletClient, parameters: GetAllowanceParameters) {
+        try {
+            const result = await walletClient.read({
+                address: parameters.tokenAddr,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [parameters.owner, parameters.spender],
+            });
+            return result;
+        } catch (error) {
+            throw Error(`Failed to get allowance: ${error}`);
+        }
+    }
+
+    @Tool({
+        name: "approve_token",
+        description: "Approve a spender to spend an amount of an ERC20 token",
+    })
+    async approveToken(walletClient: EVMWalletClient, parameters: ApproveTokenParameters) {
+        try {
+            const hash = await walletClient.sendTransaction({
+                to: parameters.tokenAddr,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [parameters.spender, parameters.amount],
+            });
+            return hash.hash;
+        } catch (error) {
+            throw Error(`Failed to approve token: ${error}`);
         }
     }
 }
