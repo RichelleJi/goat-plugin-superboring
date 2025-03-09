@@ -23,7 +23,7 @@ export class SuperboringService {
         try {
             // Get provider and wallet address
             const provider = new ethers.JsonRpcProvider(this.RPC_URL);
-            const walletAddress = await walletClient.getAddress();
+            const walletAddress = walletClient.getAddress();
 
             // Create contract instances
             const sbMacro = new ethers.Contract(this.SB_MACRO_ADDRESS, SB_MACRO_ABI, provider);
@@ -77,23 +77,28 @@ export class SuperboringService {
             });
 
             return tx.hash;
-        } catch (error: any) {
-            throw new Error(`Failed to start SuperBoring DCA position: ${error.message}`);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to start SuperBoring DCA position: ${errorMessage}`);
         }
     }
 }
 
-async function getUnderlyingAddr(inTokenAddr: string, superTokenABI: any[], provider: ethers.BrowserProvider): Promise<string> {
+async function getUnderlyingAddr(
+    inTokenAddr: string,
+    superTokenABI: readonly (string | object)[],
+    provider: ethers.BrowserProvider,
+): Promise<string> {
     const superToken = new ethers.Contract(inTokenAddr, superTokenABI, provider);
     const underlyingAddr = await superToken.getUnderlyingToken();
     return underlyingAddr;
 }
 
 const fetchAllowance = async (
-    tokenAddress: string, 
-    superTokenAddress: string, 
-    provider: ethers.Provider, 
-    walletAddress: string
+    tokenAddress: string,
+    superTokenAddress: string,
+    provider: ethers.Provider,
+    walletAddress: string,
 ): Promise<string | null> => {
     //console.log('inTokenAddr', inTokenAddr);
     try {
@@ -101,16 +106,16 @@ const fetchAllowance = async (
             // Native token (ETH)
             const balance = await provider.getBalance(walletAddress);
             return null;
-        } else {
-            // ERC20 token
-            const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-            console.log(tokenAddress);
-            const balance = await erc20.balanceOf(walletAddress);
-            console.log(balance);
-            console.log(superTokenAddress);
-            const allowance = await erc20.allowance(walletAddress, superTokenAddress);
-            return ethers.formatEther(allowance);
         }
+
+        // ERC20 token
+        const erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+        console.log(tokenAddress);
+        const balance = await erc20.balanceOf(walletAddress);
+        console.log(balance);
+        console.log(superTokenAddress);
+        const allowance = await erc20.allowance(walletAddress, superTokenAddress);
+        return ethers.formatEther(allowance);
     } catch (error) {
         console.error("Error fetching balance and allowance:", error);
         return null; // Return null in case of error
