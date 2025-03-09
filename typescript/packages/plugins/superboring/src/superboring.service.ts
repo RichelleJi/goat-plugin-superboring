@@ -1,12 +1,12 @@
 import { Tool } from "@goat-sdk/core";
 import { EVMWalletClient } from "@goat-sdk/wallet-evm";
+import { MACRO_FORWARDER_ABI, SB_MACRO_CONTRACT_ABI } from "./abi";
 import {
-  BuildBatchOperationsParameters,
-  GetParamsParameters,
-  PostCheckParameters,
-  RunMacroParameters
+    BuildBatchOperationsParameters,
+    GetParamsParameters,
+    PostCheckParameters,
+    RunMacroParameters,
 } from "./parameters";
-import { SUPERBORING_ABI, MACRO_FORWARDER_ABI } from "./abi";
 
 export class SuperboringService {
     // Constants for contract addresses based on SuperBoring.jsx
@@ -21,14 +21,14 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SUPERBORING_ABI,
+                abi: SB_MACRO_CONTRACT_ABI,
                 functionName: "getParams",
                 args: [
                     parameters.torexAddr,
                     parameters.flowRate,
                     parameters.distributor,
                     parameters.referrer,
-                    parameters.upgradeAmount
+                    parameters.upgradeAmount,
                 ],
             });
             return result;
@@ -45,13 +45,9 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SUPERBORING_ABI,
+                abi: SB_MACRO_CONTRACT_ABI,
                 functionName: "buildBatchOperations",
-                args: [
-                    parameters.host,
-                    parameters.params,
-                    parameters.msgSender
-                ],
+                args: [parameters.host, parameters.params, parameters.msgSender],
             });
             return result;
         } catch (error) {
@@ -67,13 +63,9 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SUPERBORING_ABI,
+                abi: SB_MACRO_CONTRACT_ABI,
                 functionName: "postCheck",
-                args: [
-                    parameters.host,
-                    parameters.params,
-                    parameters.msgSender
-                ],
+                args: [parameters.host, parameters.params, parameters.msgSender],
             });
             return result;
         } catch (error) {
@@ -91,10 +83,7 @@ export class SuperboringService {
                 to: this.MACRO_FORWARDER_ADDRESS,
                 abi: MACRO_FORWARDER_ABI,
                 functionName: "runMacro",
-                args: [
-                    parameters.macroAddress,
-                    parameters.params
-                ],
+                args: [parameters.macroAddress, parameters.params],
             });
             return hash.hash;
         } catch (error) {

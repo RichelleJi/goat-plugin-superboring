@@ -1,4 +1,4 @@
-export const SUPERBORING_ABI = [
+export const SB_MACRO_CONTRACT_ABI = [
     {
         inputs: [],
         name: "NoOutTokenPoolUnits",
