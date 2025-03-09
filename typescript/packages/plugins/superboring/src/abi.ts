@@ -112,4 +112,25 @@ export const SUPERBORING_ABI = [
         stateMutability: "view",
         type: "function",
     },
-];
+] as const;
+
+export const MACRO_FORWARDER_ABI = [
+    {
+        inputs: [
+            {
+                internalType: "address",
+                name: "macroAddress",
+                type: "address",
+            },
+            {
+                internalType: "bytes",
+                name: "params",
+                type: "bytes",
+            },
+        ],
+        name: "runMacro",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+    },
+] as const;
