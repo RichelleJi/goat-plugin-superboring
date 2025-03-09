@@ -1,6 +1,6 @@
 import { Tool } from "@goat-sdk/core";
 import { EVMWalletClient } from "@goat-sdk/wallet-evm";
-import { ERC20_ABI, MACRO_FORWARDER_ABI, SB_MACRO_ABI, SUPERBORING_ABI, SUPER_TOKEN_ABI, TOREX_ABI } from "./abi";
+import { ERC20_ABI, MACRO_FORWARDER_ABI, SB_MACRO_ABI, SUPER_TOKEN_ABI, TOREX_ABI } from "./abi";
 import {
     ApproveTokenParameters,
     BuildBatchOperationsParameters,
@@ -50,7 +50,7 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SUPERBORING_ABI,
+                abi: SB_MACRO_ABI,
                 functionName: "buildBatchOperations",
                 args: [parameters.host, parameters.params, parameters.msgSender],
             });
@@ -68,7 +68,7 @@ export class SuperboringService {
         try {
             const result = await walletClient.read({
                 address: this.SB_MACRO_ADDRESS,
-                abi: SUPERBORING_ABI,
+                abi: SB_MACRO_ABI,
                 functionName: "postCheck",
                 args: [parameters.host, parameters.params, parameters.msgSender],
             });
